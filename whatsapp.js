@@ -426,11 +426,11 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                 }
             }
 
-            if (isLegacy) {
-                await wa.chatRead(message.key, 1)
-            } else {
-                await wa.sendReadReceipt(message.key.remoteJid, message.key.participant, [message.key.id])
-            }
+            // if (isLegacy) {
+            //     await wa.chatRead(message.key, 1)
+            // } else {
+            //     await wa.sendReadReceipt(message.key.remoteJid, message.key.participant, [message.key.id])
+            // }
         }
     })
 
