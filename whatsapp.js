@@ -206,7 +206,7 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                                                         'Kodepos ' +
                                                         splittedArray[2] +
                                                         ' masuk ke Kabupaten / Kota ' +
-                                                        destination.PROVINCE_NAME +
+                                                        destination.CITY_NAME +
                                                         ' Kecamatan ' +
                                                         destination.DISTRICT_NAME +
                                                         ' \n\n'
@@ -231,7 +231,7 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
 
                                                     replyText += '*Apakah sudah sesuai?* \n'
                                                     const expiredDate = new Date(
-                                                        Date.now() + 1 * (60 * 60 * 1000)
+                                                        Date.now() + 8 * (60 * 60 * 1000)
                                                     ).toLocaleString('id-ID')
 
                                                     wa.sendMessage(message.key.remoteJid, {
