@@ -105,7 +105,6 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                 await wa.sendMessage(message.key.remoteJid, { text: 'pong' })
             } else if (message.message.conversation.charAt(0) == '#') {
                 //insert ke log
-
                 let replyText = 'Konfirmasi Data Pemesanan \n\n'
                 var splittedArray = message.message.conversation.substring(1).split('#')
 
@@ -211,7 +210,7 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                                                         destination.DISTRICT_NAME +
                                                         ' \n\n'
 
-                                                    replyText += 'Pesanan: ' + produk.nama + ' \n'
+                                                    replyText += 'Pesanan: *' + produk.nama + '* \n'
                                                     replyText +=
                                                         'Harga: Rp' +
                                                         Number(Math.round(produk.harga).toFixed(1)).toLocaleString(
@@ -225,36 +224,42 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                                                         Number(totalOngkir.toFixed(1)).toLocaleString('id-ID') +
                                                         ' \n'
                                                     replyText +=
-                                                        'Total Harga: Rp' +
+                                                        'Total Harga: *Rp' +
                                                         Number(totalHarga.toFixed(1)).toLocaleString('id-ID') +
-                                                        ' \n\n'
+                                                        '* \n\n'
 
                                                     replyText += '*Apakah sudah sesuai?* \n'
                                                     const expiredDate = new Date(
                                                         Date.now() + 8 * (60 * 60 * 1000)
                                                     ).toLocaleString('id-ID')
 
-                                                    wa.sendMessage(message.key.remoteJid, {
-                                                        text: replyText,
-                                                        footer: `(Lakukan konfirmasi maksimal ${expiredDate})`,
-                                                        buttons: [
-                                                            {
-                                                                buttonId: 'confirm-order',
-                                                                buttonText: {
-                                                                    displayText: 'Ya, Pesanan Saya Sudah Sesuai',
-                                                                },
-                                                                type: 1,
-                                                            },
-                                                            {
-                                                                buttonId: 'cancel-order',
-                                                                buttonText: {
-                                                                    displayText: 'Tidak, Batalkan Pesanan Saya',
-                                                                },
-                                                                type: 1,
-                                                            },
-                                                        ],
-                                                        headerType: 1,
-                                                    })
+                                                    //sementara sebelum button fixed start
+                                                    replyText += `(Lakukan konfirmasi maksimal ${expiredDate}) \n\n`
+                                                    replyText += '1️⃣ *Ya*, Pesanan Saya Sudah Sesuai \n'
+                                                    replyText += '2️⃣ *Tidak*, Batalkan Pesanan Saya \n'
+                                                    //sementara end
+
+                                                    // wa.sendMessage(message.key.remoteJid, {
+                                                    //     text: replyText,
+                                                    //     footer: `(Lakukan konfirmasi maksimal ${expiredDate})`,
+                                                    //     buttons: [
+                                                    //         {
+                                                    //             buttonId: 'confirm-order',
+                                                    //             buttonText: {
+                                                    //                 displayText: 'Ya, Pesanan Saya Sudah Sesuai',
+                                                    //             },
+                                                    //             type: 1,
+                                                    //         },
+                                                    //         {
+                                                    //             buttonId: 'cancel-order',
+                                                    //             buttonText: {
+                                                    //                 displayText: 'Tidak, Batalkan Pesanan Saya',
+                                                    //             },
+                                                    //             type: 1,
+                                                    //         },
+                                                    //     ],
+                                                    //     headerType: 1,
+                                                    // })
 
                                                     axios({
                                                         method: 'post',
@@ -271,6 +276,9 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                                                     })
                                                         .then(function (response) {
                                                             //msg.reply('Pesanan berhasil!');
+                                                            wa.sendMessage(message.key.remoteJid, {
+                                                                text: replyText,
+                                                            })
                                                         })
                                                         .catch(function (error) {
                                                             wa.sendMessage(message.key.remoteJid, {
@@ -424,6 +432,115 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                             })
                         })
                 }
+            } else if (message.message.conversation.length == 1 && message.message.conversation.charAt(0) == '1') {
+                //cek tabel order jika (latest create date < 1 jam dan status = 1) maka approve ubah status jadi 2
+                axios({
+                    method: 'post',
+                    url: 'https://api.wangsiap.com/api/orders/get-latest-by-sender',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    data: qs.stringify({
+                        no_pengirim: splittedRemoteJid[0],
+                    }),
+                })
+                    .then(function (response) {
+                        if (response.data.data != null) {
+                            axios({
+                                method: 'post',
+                                url: `https://api.wangsiap.com/api/orders/update-status/${response.data.data.id}`,
+                                headers: {
+                                    Accept: 'application/json',
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                data: qs.stringify({
+                                    order_status_id: '2',
+                                    _method: 'PUT',
+                                }),
+                            })
+                                .then(function (response) {
+                                    if (response.data.data != null) {
+                                        //thank you text harusnya berdasarkan setting user
+                                        //conditional jika cod atau transfer
+                                        wa.sendMessage(message.key.remoteJid, {
+                                            text: 'Terima kasih! Pesanan sudah masuk dan akan segera diproses',
+                                        })
+                                    }
+                                })
+                                .catch(function (error) {
+                                    wa.sendMessage(message.key.remoteJid, {
+                                        text: 'Gangguan koneksi saat update status order. Silahkan coba lagi!',
+                                    })
+                                })
+                        } else {
+                            if (response.data != null) {
+                                if (response.data.message == 'Order expired') {
+                                    wa.sendMessage(message.key.remoteJid, {
+                                        text: 'Batas konfirmasi sudah terlewati (1 jam). Silahkan buat pesanan lagi!',
+                                    })
+                                }
+                            }
+                        }
+                    })
+                    .catch(function (error) {
+                        wa.sendMessage(message.key.remoteJid, {
+                            text: 'Gangguan koneksi saat cek pesanan terakhir. Silahkan coba lagi!',
+                        })
+                    })
+            } else if (message.message.conversation.length == 1 && message.message.conversation.charAt(0) == '2') {
+                axios({
+                    method: 'post',
+                    url: 'https://api.wangsiap.com/api/orders/get-latest-by-sender',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    data: qs.stringify({
+                        no_pengirim: splittedRemoteJid[0],
+                    }),
+                })
+                    .then(function (response) {
+                        if (response.data.data != null) {
+                            axios({
+                                method: 'post',
+                                url: `https://api.wangsiap.com/api/orders/update-status/${response.data.data.id}`,
+                                headers: {
+                                    Accept: 'application/json',
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                data: qs.stringify({
+                                    order_status_id: '5',
+                                    _method: 'PUT',
+                                }),
+                            })
+                                .then(function (response) {
+                                    if (response.data.data != null) {
+                                        //thank you text harusnya berdasarkan setting user
+                                        //conditional jika cod atau transfer
+                                        wa.sendMessage(message.key.remoteJid, {
+                                            text: 'Pesanan berhasil dibatalkan',
+                                        })
+                                    }
+                                })
+                                .catch(function (error) {
+                                    wa.sendMessage(message.key.remoteJid, {
+                                        text: 'Gangguan koneksi saat update status order. Silahkan coba lagi!',
+                                    })
+                                })
+                        } else {
+                            if (response.data != null) {
+                                if (response.data.message == 'Order expired') {
+                                    wa.sendMessage(message.key.remoteJid, {
+                                        text: 'Batas konfirmasi sudah terlewati (1 jam). Silahkan buat pesanan lagi!',
+                                    })
+                                }
+                            }
+                        }
+                    })
+                    .catch(function (error) {
+                        wa.sendMessage(message.key.remoteJid, {
+                            text: 'Gangguan koneksi saat cek pesanan terakhir. Silahkan coba lagi!',
+                        })
+                    })
             }
 
             // if (isLegacy) {
